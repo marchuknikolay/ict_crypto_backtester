@@ -2,6 +2,7 @@ from fetch_data import *
 from swing_points import *
 from sweeps import *
 from boses import *
+from constants import *
 
 symbol = 'BTCUSDT'
 htf = '1h'
@@ -150,8 +151,8 @@ def get_entries():
     data1h = fetch_binance_data(symbol, htf, start_date, end_date)
 
     # identify swing points
-    swing_points = identify_swing_points(data1h)
-    # print(swing_points)
+    swing_points = identify_swing_points(data1h, FRACTAL)
+    print(swing_points)
 
     # identify liquidity sweeps
     liq_sweeps = identify_liquidity_sweeps(data1h, swing_points)
@@ -171,6 +172,7 @@ def get_entries():
 
             #last_high_swing_point = get_last_high_swing_point(data15m[data15m['Open Time'] <= bearish_bos['Bos Date']].reset_index(drop=True))
             last_high_swing_point = get_last_high_swing_point(data1h[data1h['Open Time'] <= bearish_bos['Bos Date']].reset_index(drop=True), bearish_bos['Bos Price'])
+            print(last_high_swing_point)
             if last_high_swing_point is None:
                 continue
 
@@ -199,6 +201,7 @@ def get_entries():
 
             #last_low_swing_point = get_last_low_swing_point(data15m[data15m['Open Time'] <= bullish_bos['Bos Date']].reset_index(drop=True))
             last_low_swing_point = get_last_low_swing_point(data1h[data1h['Open Time'] <= bullish_bos['Bos Date']].reset_index(drop=True), bullish_bos['Bos Price'])
+            print(last_low_swing_point)
             if last_low_swing_point is None:
                 continue
 
@@ -226,7 +229,7 @@ if __name__ == "__main__":
     pd.set_option('display.max_rows', None)
 
     entries = get_entries()
-    print(entries)
+    '''print(entries)
     print('----------------------------------------------------------------------------')
 
     result = 0;
@@ -249,4 +252,4 @@ if __name__ == "__main__":
         print('Number of trades: ', entries.shape[0])
         print('Number of wins: ', wins)
         print('Max lose streak: ', get_largest_losestreak(entries))
-        print('Max win streak: ', get_largest_winstreak(entries))
+        print('Max win streak: ', get_largest_winstreak(entries))'''

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import logging
 from swing_points import *
+from constants import *
 
 def identify_break_of_structure(df, swing_points):
     """
@@ -71,7 +72,7 @@ def get_first_bullish_bos(df):
                 'Candle Close Price': df['Close'][i]
             }
 
-        if is_swing_high(df, i):
+        if is_swing_high(df, i, FRACTAL):
             current_swing_high = df.iloc[i]
 
 def get_first_bearish_bos(df):
@@ -85,6 +86,6 @@ def get_first_bearish_bos(df):
                 'Candle Close Price': df['Close'][i]
             }
 
-        if is_swing_low(df, i):
+        if is_swing_low(df, i, FRACTAL):
             current_swing_low = df.iloc[i]
 
