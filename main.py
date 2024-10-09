@@ -3,83 +3,9 @@ from swing_points import *
 from sweeps import *
 from boses import *
 from constants import *
+from trade import *
 
-symbol = 'BTCUSDT'
-htf = '1h'
-ltf = '1m'
-start_date = '2024-09-29'
-end_date = '2024-10-01'
-coefficient = 3
-
-def get_largest_winstreak(df):
-    max_streak = 0
-    current_streak = 0
-    
-    for i, entry in df.iterrows():
-        if entry['Result'] == 'Win':
-            current_streak += 1
-        else:
-            if current_streak > max_streak:
-                max_streak = current_streak
-            current_streak = 0
-    
-    # Check the final streak
-    if current_streak > max_streak:
-        max_streak = current_streak
-    
-    return max_streak
-
-def get_largest_losestreak(df):
-    max_streak = 0
-    current_streak = 0
-    
-    for i, entry in df.iterrows():
-        if entry['Result'] == 'Lose':
-            current_streak += 1
-        else:
-            if current_streak > max_streak:
-                max_streak = current_streak
-            current_streak = 0
-    
-    # Check the final streak
-    if current_streak > max_streak:
-        max_streak = current_streak
-    
-    return max_streak
-
-def get_long_winrate(df):
-    count = 0
-    win_count = 0
-
-    for i, entry in df.iterrows():
-        if entry['Entry Type'] == 'Long':
-            count += 1
-
-            if entry['Result'] == 'Win':
-                win_count += 1
-
-    if win_count == 0:
-        return 0
-
-    return round(win_count / count * 100)
-
-def get_short_winrate(df):
-    count = 0
-    win_count = 0
-
-    for i, entry in df.iterrows():
-        if entry['Entry Type'] == 'Short':
-            count += 1
-
-            if entry['Result'] == 'Win':
-                win_count += 1
-
-    if win_count == 0:
-        return 0
-
-    return round(win_count / count * 100)
-
-def get_take_profit(entry_price, stop_loss):
+def get_take_profit(entry_price, stop_loss, coefficient):
     diff = abs(entry_price - stop_loss)
 
     if (entry_price < stop_loss):
@@ -146,37 +72,50 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
         else:
             return None
 
-def get_entries():
+def get_entries(htf, ltf, coefficient):
     # fetch data for high timeframe
-    data1h = fetch_binance_data(symbol, htf, start_date, end_date)
+    data1h = fetch_binance_data(TICKER, htf, START_DATE, END_DATE)
 
     # identify swing points
     swing_points = identify_swing_points(data1h, FRACTAL)
-    print(swing_points)
+    #print(swing_points)
 
     # identify liquidity sweeps
     liq_sweeps = identify_liquidity_sweeps(data1h, swing_points)
     liq_sweeps.drop_duplicates(subset=['Sweep Price'], keep='first', inplace=True)
-    print(liq_sweeps)
+    #print(liq_sweeps.to_string(index=False))
 
     # fetch data for low timeframe
-    data15m = fetch_binance_data(symbol, ltf, start_date, end_date)
+    data15m = fetch_binance_data(TICKER, ltf, START_DATE, END_DATE)
 
     entries = []
 
     for i, sweep in liq_sweeps.iterrows():
         if sweep['Sweep Type'] == 'Liquidity Sweep High':
             bearish_bos = get_first_bearish_bos(data15m[data15m['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
+            #print(bearish_bos)
             if bearish_bos is None:
                 continue
 
-            #last_high_swing_point = get_last_high_swing_point(data15m[data15m['Open Time'] <= bearish_bos['Bos Date']].reset_index(drop=True))
+            if bearish_bos['Bos Price'] > sweep['Sweep Price']:
+                continue
+
+            #last_high_swing_point = get_last_high_swing_point(data15m[data15m['Open Time'] <= bearish_bos['Bos Date']].reset_index(drop=True), bearish_bos['Bos Price'])
             last_high_swing_point = get_last_high_swing_point(data1h[data1h['Open Time'] <= bearish_bos['Bos Date']].reset_index(drop=True), bearish_bos['Bos Price'])
-            print(last_high_swing_point)
+            '''last_high_swing_point = None
+            if sweep['Sweep Price'] > bearish_bos['Bos Price']:
+                last_high_swing_point = {'Price': sweep['Sweep Price']}
+
+            candles = data1h[(data1h['Open Time'] > sweep['Sweep DateTime']) & (data1h['Open Time'] < bearish_bos['Bos Date']) & (data1h['High'] > sweep['Sweep Price'])]
+            if not candles.empty:
+                continue'''
+
             if last_high_swing_point is None:
                 continue
 
-            take_profit = get_take_profit(bearish_bos['Candle Close Price'], last_high_swing_point['Price'])
+            #print(last_high_swing_point)
+
+            take_profit = get_take_profit(bearish_bos['Candle Close Price'], last_high_swing_point['Price'], coefficient)
             result = get_trade_result(data15m[data15m['Open Time'] > bearish_bos['Bos Date']].reset_index(drop=True), 'Short', take_profit, last_high_swing_point['Price'])
             if result is None:
                 continue
@@ -196,16 +135,29 @@ def get_entries():
 
         if sweep['Sweep Type'] == 'Liquidity Sweep Low':
             bullish_bos = get_first_bullish_bos(data15m[data15m['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
+            #print(bullish_bos)
             if bullish_bos is None:
                 continue
 
-            #last_low_swing_point = get_last_low_swing_point(data15m[data15m['Open Time'] <= bullish_bos['Bos Date']].reset_index(drop=True))
+            if bullish_bos['Bos Price'] < sweep['Sweep Price']:
+                continue
+
+            #last_low_swing_point = get_last_low_swing_point(data15m[data15m['Open Time'] <= bullish_bos['Bos Date']].reset_index(drop=True), bullish_bos['Bos Price'])
             last_low_swing_point = get_last_low_swing_point(data1h[data1h['Open Time'] <= bullish_bos['Bos Date']].reset_index(drop=True), bullish_bos['Bos Price'])
-            print(last_low_swing_point)
+            '''last_low_swing_point = None
+            if sweep['Sweep Price'] < bullish_bos['Bos Price']:
+                last_low_swing_point = {'Price': sweep['Sweep Price']}
+
+            candles = data1h[(data1h['Open Time'] > sweep['Sweep DateTime']) & (data1h['Open Time'] < bullish_bos['Bos Date']) & (data1h['Low'] < sweep['Sweep Price'])]
+            if not candles.empty:
+                continue'''
+
             if last_low_swing_point is None:
                 continue
 
-            take_profit = get_take_profit(bullish_bos['Candle Close Price'], last_low_swing_point['Price'])
+            #print(last_low_swing_point)
+
+            take_profit = get_take_profit(bullish_bos['Candle Close Price'], last_low_swing_point['Price'], coefficient)
             result = get_trade_result(data15m[data15m['Open Time'] > bullish_bos['Bos Date']].reset_index(drop=True), 'Long', take_profit, last_low_swing_point['Price'])
             if result is None:
                 continue
@@ -225,24 +177,23 @@ def get_entries():
 
     return pd.DataFrame(entries)
 
-if __name__ == "__main__":
+def trade(htf, ltf, coefficient):
     pd.set_option('display.max_rows', None)
-
-    entries = get_entries()
-    '''print(entries)
+    entries = get_entries(htf, ltf, coefficient)
+    print(entries.to_string(index=False))
     print('----------------------------------------------------------------------------')
 
-    result = 0;
-    wins = 0;
+    result = 0
+    wins = 0
     for i, entry in entries.iterrows():
         if entry['Result'] == 'Win':
             result += coefficient
             wins += 1
         if entry['Result'] == 'Lose':
-            result -= 1;
+            result -= 1
 
     if not entries.empty: 
-        print('Ticker: ', symbol)
+        print('Ticker: ', TICKER)
         print('Strategy: ', htf, ltf)
         print('TP: ', coefficient)
         print('Winrate: ', round(wins/entries.shape[0] * 100), '%')
@@ -252,4 +203,56 @@ if __name__ == "__main__":
         print('Number of trades: ', entries.shape[0])
         print('Number of wins: ', wins)
         print('Max lose streak: ', get_largest_losestreak(entries))
-        print('Max win streak: ', get_largest_winstreak(entries))'''
+        print('Max win streak: ', get_largest_winstreak(entries))
+    
+    print('\n\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n')
+
+if __name__ == "__main__":
+
+    '''trade('1d', '4h', 1)
+    trade('1d', '4h', 1.5)
+    trade('1d', '4h', 2)
+    trade('1d', '4h', 2.5)
+    trade('1d', '4h', 3)
+
+    trade('1d', '1h', 1)
+    trade('1d', '1h', 1.5)
+    trade('1d', '1h', 2)
+    trade('1d', '1h', 2.5)
+    trade('1d', '1h', 3)'''
+
+    trade('4h', '1h', 1)
+    '''trade('4h', '1h', 1.5)
+    trade('4h', '1h', 2)
+    trade('4h', '1h', 2.5)
+    trade('4h', '1h', 3)
+
+    trade('4h', '30m', 1)
+    trade('4h', '30m', 1.5)
+    trade('4h', '30m', 2)
+    trade('4h', '30m', 2.5)
+    trade('4h', '30m', 3)
+
+    trade('4h', '15m', 1)
+    trade('4h', '15m', 1.5)
+    trade('4h', '15m', 2)
+    trade('4h', '15m', 2.5)
+    trade('4h', '15m', 3)
+
+    trade('1h', '15m', 1)
+    trade('1h', '15m', 1.5)
+    trade('1h', '15m', 2)
+    trade('1h', '15m', 2.5)
+    trade('1h', '15m', 3)
+
+    trade('1h', '5m', 1)
+    trade('1h', '5m', 1.5)
+    trade('1h', '5m', 2)
+    trade('1h', '5m', 2.5)
+    trade('1h', '5m', 3)
+
+    trade('1h', '1m', 1)
+    trade('1h', '1m', 1.5)
+    trade('1h', '1m', 2)
+    trade('1h', '1m', 2.5)
+    trade('1h', '1m', 3)'''
