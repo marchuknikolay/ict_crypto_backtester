@@ -1,3 +1,9 @@
+from fetch_data import *
+from swing_points import *
+from sweeps import *
+from boses import *
+from constants import *
+
 def get_largest_streak(df, result_type):
     """
     Identifies the largest streak of consecutive 'Win' or 'Lose' results.
@@ -149,3 +155,87 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
         return {'Result': 'Lose', 'Result Date': stop_loss_reached['Open Time']}
     
     return None
+
+def get_entries(htf, ltf, coefficient):
+    """
+    Generate trade entries based on liquidity sweeps and break of structure (BOS).
+
+    Parameters:
+    htf (str): High timeframe.
+    ltf (str): Low timeframe.
+    coefficient (float): Coefficient for calculating take profit.
+
+    Returns:
+    pd.DataFrame: DataFrame containing the generated trade entries.
+    """
+    # Fetch data for high and low timeframes
+    data_htf = fetch_binance_data(TICKER, htf, START_DATE, END_DATE)
+    data_ltf = fetch_binance_data(TICKER, ltf, START_DATE, END_DATE)
+
+    # Identify swing points and liquidity sweeps
+    swing_points = identify_swing_points(data_htf, FRACTAL)
+    liq_sweeps = identify_liquidity_sweeps(data_htf, swing_points).drop_duplicates(subset=['Sweep Price'], keep='first')
+
+    # Mapping for sweep types to corresponding BOS and swing point functions
+    sweep_config = {
+        'Liquidity Sweep High': {
+            'bos_func': get_first_bearish_bos,
+            'swing_func': get_last_high_swing_point,
+            'entry_type': 'Short'
+        },
+        'Liquidity Sweep Low': {
+            'bos_func': get_first_bullish_bos,
+            'swing_func': get_last_low_swing_point,
+            'entry_type': 'Long'
+        }
+    }
+
+    entries = []
+
+    # Process each liquidity sweep
+    for _, sweep in liq_sweeps.iterrows():
+        sweep_type = sweep['Sweep Type']
+        config = sweep_config.get(sweep_type)
+
+        if not config:
+            continue
+
+        # Get BOS data
+        bos_data = config['bos_func'](data_ltf[data_ltf['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
+        if bos_data is None:
+            continue
+
+        # Get the last swing point before BOS date
+        swing_point = config['swing_func'](
+            data_htf[data_htf['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True), 
+            bos_data['Bos Price']
+        )
+        if swing_point is None:
+            continue
+
+        # Calculate take profit and determine trade result
+        take_profit = get_take_profit(bos_data['Candle Close Price'], swing_point['Price'], coefficient)
+        result = get_trade_result(
+            data_ltf[data_ltf['Open Time'] > bos_data['Bos Date']].reset_index(drop=True),
+            config['entry_type'], 
+            take_profit, 
+            swing_point['Price']
+        )
+        if result is None:
+            continue
+
+        # Append entry data
+        entries.append({
+            'Entry Type': config['entry_type'],
+            'Sweep Date': sweep['Sweep DateTime'],
+            'Sweep Price': sweep['Sweep Price'],
+            'Bos Price': bos_data['Bos Price'],
+            'Entry Date': bos_data['Bos Date'],
+            'Entry Price': bos_data['Candle Close Price'],
+            'Take Profit': take_profit,
+            'Stop Loss': swing_point['Price'],
+            'Result': result['Result'],
+            'Result Date': result['Result Date']
+        })
+
+    return pd.DataFrame(entries)
