@@ -210,9 +210,12 @@ def get_entries(htf, ltf, coefficient):
         if EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP and not config['bos_price_check'](bos_data['Bos Price'], sweep['Sweep Price']):
             continue
 
+        # Determine the data source based on the STOP_LOSS setting
+        data_source = data_htf if STOP_LOSS == StopLoss.LAST_HTF_FRACTAL else data_ltf
+
         # Get the last swing point before BOS date
         swing_point = config['swing_func'](
-            data_htf[data_htf['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True), 
+            data_source[data_source['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True),
             bos_data['Bos Price']
         )
         if swing_point is None:
