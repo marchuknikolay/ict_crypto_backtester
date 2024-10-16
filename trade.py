@@ -272,7 +272,7 @@ def trade(htf, ltf, coefficient):
 
         # Display the results
         print(f'Ticker: {TICKER}')
-        print(f'Strategy: {htf}, {ltf}')
+        print(f'Strategy: {htf} {ltf}')
         print(f'TP: {coefficient}')
         print(f'Winrate: {winrate}%')
         print(f'Profit: {result}%')
@@ -283,4 +283,25 @@ def trade(htf, ltf, coefficient):
         print(f'Max lose streak: {max_lose_streak}')
         print(f'Max win streak: {max_win_streak}')
 
-    print('\n\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n')
+    print('\n\n-------------------------------------------------------------------------------------------------------------------------------------------------------\n\n')
+
+def execute_trades_for_combinations(combinations):
+    """
+    Execute trades based on the provided combinations of timeframes and coefficients.
+
+    Parameters:
+    combinations (list of tuples): Each tuple contains (htf, ltf, coefficient) for trading.
+    """
+    for htf, ltf, coefficient in combinations:
+        trade(htf, ltf, coefficient)
+
+def get_trade_combinations():
+    """
+    Generate a list of trade combinations based on different timeframes and coefficients.
+
+    Returns:
+    list of tuples: Each tuple contains (htf, ltf, coefficient) for trading.
+    """
+    
+    # Create all combinations of timeframes and coefficients
+    return [(htf, ltf, coefficient) for htf, ltf in TIMEFRAMES for coefficient in COEFFICIENTS]

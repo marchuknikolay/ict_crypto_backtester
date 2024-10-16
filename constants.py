@@ -15,6 +15,22 @@ TICKER = 'BTCUSDT'
 START_DATE = '2024-07-01'
 END_DATE = '2024-10-01'
 
+TIMEFRAMES = [
+    ('4h', '1h'),
+    # ('4h', '30m'),
+    # ('4h', '15m'),
+    # ('1h', '15m'),
+    # ('1h', '5m'),
+    # ('1h', '1m'),
+]
+COEFFICIENTS = [
+    1,
+    # 1.5,
+    # 2,
+    # 2.5,
+    # 3
+]
+
 FRACTAL = Fractal.FIVE
 EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP = False
 STOP_LOSS = StopLoss.LAST_LTF_FRACTAL
