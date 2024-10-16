@@ -181,12 +181,14 @@ def get_entries(htf, ltf, coefficient):
         'Liquidity Sweep High': {
             'bos_func': get_first_bearish_bos,
             'swing_func': get_last_high_swing_point,
-            'entry_type': 'Short'
+            'entry_type': 'Short',
+            'bos_price_check': lambda bos_price, sweep_price: bos_price <= sweep_price
         },
         'Liquidity Sweep Low': {
             'bos_func': get_first_bullish_bos,
             'swing_func': get_last_low_swing_point,
-            'entry_type': 'Long'
+            'entry_type': 'Long',
+            'bos_price_check': lambda bos_price, sweep_price: bos_price >= sweep_price
         }
     }
 
@@ -203,6 +205,9 @@ def get_entries(htf, ltf, coefficient):
         # Get BOS data
         bos_data = config['bos_func'](data_ltf[data_ltf['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
         if bos_data is None:
+            continue
+
+        if EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP and not config['bos_price_check'](bos_data['Bos Price'], sweep['Sweep Price']):
             continue
 
         # Get the last swing point before BOS date
