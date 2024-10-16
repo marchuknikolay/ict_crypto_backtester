@@ -247,3 +247,40 @@ def get_entries(htf, ltf, coefficient):
         })
 
     return pd.DataFrame(entries)
+
+def trade(htf, ltf, coefficient):
+    pd.set_option('display.max_rows', None)
+    entries = get_entries(htf, ltf, coefficient)
+    
+    # Display the entries if available
+    if not entries.empty:
+        print(entries.to_string(index=False))
+        print('----------------------------------------------------------------------------')
+
+        # Calculate the profit and count wins
+        wins = (entries['Result'] == 'Win').sum()
+        losses = (entries['Result'] == 'Lose').sum()
+        result = wins * coefficient - losses
+
+        # Calculate statistics
+        total_trades = len(entries)
+        winrate = round((wins / total_trades) * 100)
+        long_winrate = get_long_winrate(entries)
+        short_winrate = get_short_winrate(entries)
+        max_lose_streak = get_largest_losestreak(entries)
+        max_win_streak = get_largest_winstreak(entries)
+
+        # Display the results
+        print(f'Ticker: {TICKER}')
+        print(f'Strategy: {htf}, {ltf}')
+        print(f'TP: {coefficient}')
+        print(f'Winrate: {winrate}%')
+        print(f'Profit: {result}%')
+        print(f'Long winrate: {long_winrate}%')
+        print(f'Short winrate: {short_winrate}%')
+        print(f'Number of trades: {total_trades}')
+        print(f'Number of wins: {wins}')
+        print(f'Max lose streak: {max_lose_streak}')
+        print(f'Max win streak: {max_win_streak}')
+
+    print('\n\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n')
