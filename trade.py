@@ -156,6 +156,28 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
     
     return None
 
+def get_stop_loss(data_htf, data_ltf, bos_data, config):
+    """
+    Determine the stop loss based on the swing point and BOS data.
+
+    Parameters:
+    data_htf (pd.DataFrame): High timeframe data.
+    data_ltf (pd.DataFrame): Low timeframe data.
+    bos_data (pd.Series): BOS data containing price and date information.
+    config (dict): Configuration for swing point retrieval.
+
+    Returns:
+    pd.Series or None: The last swing point that meets the conditions, or None if not found.
+    """
+    # Choose data source based on the STOP_LOSS setting
+    data_source = data_htf if STOP_LOSS == StopLoss.LAST_HTF_FRACTAL else data_ltf
+
+    # Get the last swing point before the BOS date
+    return config['swing_func'](
+        data_source[data_source['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True),
+        bos_data['Bos Price']
+    )
+
 def get_entries(htf, ltf, coefficient):
     """
     Generate trade entries based on liquidity sweeps and break of structure (BOS).
@@ -207,27 +229,22 @@ def get_entries(htf, ltf, coefficient):
         if bos_data is None:
             continue
 
+        # Check BOS price against the sweep price
         if EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP and not config['bos_price_check'](bos_data['Bos Price'], sweep['Sweep Price']):
             continue
 
-        # Determine the data source based on the STOP_LOSS setting
-        data_source = data_htf if STOP_LOSS == StopLoss.LAST_HTF_FRACTAL else data_ltf
-
-        # Get the last swing point before BOS date
-        swing_point = config['swing_func'](
-            data_source[data_source['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True),
-            bos_data['Bos Price']
-        )
-        if swing_point is None:
+        # Get the stop loss using the new function
+        stop_loss = get_stop_loss(data_htf, data_ltf, bos_data, config)
+        if stop_loss is None:
             continue
 
         # Calculate take profit and determine trade result
-        take_profit = get_take_profit(bos_data['Candle Close Price'], swing_point['Price'], coefficient)
+        take_profit = get_take_profit(bos_data['Candle Close Price'], stop_loss['Price'], coefficient)
         result = get_trade_result(
             data_ltf[data_ltf['Open Time'] > bos_data['Bos Date']].reset_index(drop=True),
             config['entry_type'], 
             take_profit, 
-            swing_point['Price']
+            stop_loss['Price']
         )
         if result is None:
             continue
@@ -241,7 +258,7 @@ def get_entries(htf, ltf, coefficient):
             'Entry Date': bos_data['Bos Date'],
             'Entry Price': bos_data['Candle Close Price'],
             'Take Profit': take_profit,
-            'Stop Loss': swing_point['Price'],
+            'Stop Loss': stop_loss['Price'],
             'Result': result['Result'],
             'Result Date': result['Result Date']
         })
