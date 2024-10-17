@@ -1,6 +1,7 @@
 from swing_points import is_swing_high, is_swing_low
 from constants import FRACTAL
 
+
 def get_first_bullish_bos(df):
     """
     Identify the first bullish Break of Structure (BoS).
@@ -29,6 +30,7 @@ def get_first_bullish_bos(df):
             current_swing_high = df.iloc[i]
 
     return None  # Return None if no bullish BoS is found
+
 
 def get_first_bearish_bos(df):
     """

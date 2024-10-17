@@ -1,6 +1,7 @@
 import pandas as pd
 from constants import *
 
+
 def is_swing_point(df, index, price_column, comparison_fn, window_size):
     """
     Generic function to check if the price at the given index is a swing point (high or low).
@@ -20,6 +21,7 @@ def is_swing_point(df, index, price_column, comparison_fn, window_size):
 
     return df[price_column][index] == comparison_fn(df[price_column][index - (window_size - 1):index + window_size])
 
+
 def is_swing_high(df, index, fractal):
     """
     Check if the price at the given index is a swing high.
@@ -37,9 +39,11 @@ def is_swing_high(df, index, fractal):
     elif fractal == Fractal.FIVE:
         window_size = 3
     else:
-        raise ValueError('Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
+        raise ValueError(
+            'Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
 
     return is_swing_point(df, index, 'High', max, window_size)
+
 
 def is_swing_low(df, index, fractal):
     """
@@ -58,9 +62,11 @@ def is_swing_low(df, index, fractal):
     elif fractal == Fractal.FIVE:
         window_size = 3
     else:
-        raise ValueError('Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
+        raise ValueError(
+            'Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
 
     return is_swing_point(df, index, 'Low', min, window_size)
+
 
 def identify_swing_points(df, fractal):
     """
@@ -74,18 +80,22 @@ def identify_swing_points(df, fractal):
     pd.DataFrame: Dataframe containing swing points with columns 'Date', 'Price', and 'Type'.
     """
     if fractal not in Fractal:
-        raise ValueError('Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
+        raise ValueError(
+            'Unsupported fractal value. Use Fractal.THREE or Fractal.FIVE.')
 
     swing_points = []
     window = 1 if fractal == Fractal.THREE else 2
 
     for i in range(window, len(df) - window):
         if is_swing_high(df, i, fractal):
-            swing_points.append({'Date': df['Open Time'][i], 'Price': df['High'][i], 'Type': 'Swing High'})
+            swing_points.append(
+                {'Date': df['Open Time'][i], 'Price': df['High'][i], 'Type': 'Swing High'})
         if is_swing_low(df, i, fractal):
-            swing_points.append({'Date': df['Open Time'][i], 'Price': df['Low'][i], 'Type': 'Swing Low'})
+            swing_points.append(
+                {'Date': df['Open Time'][i], 'Price': df['Low'][i], 'Type': 'Swing Low'})
 
     return pd.DataFrame(swing_points)
+
 
 def get_last_swing_point(df, bos_price, swing_type, price_condition):
     """
@@ -101,12 +111,14 @@ def get_last_swing_point(df, bos_price, swing_type, price_condition):
     pd.Series or None: The last swing point that meets the conditions, or None if none are found.
     """
     swing_points = identify_swing_points(df, FRACTAL)
-    swing_points = swing_points[(swing_points['Type'] == swing_type) & (price_condition(swing_points['Price'], bos_price))]
+    swing_points = swing_points[(swing_points['Type'] == swing_type) & (
+        price_condition(swing_points['Price'], bos_price))]
 
     if swing_points.empty:
         return None
 
     return swing_points.iloc[-1]
+
 
 def get_last_high_swing_point(df, bos_price):
     """
@@ -120,6 +132,7 @@ def get_last_high_swing_point(df, bos_price):
     pd.Series or None: The last 'Swing High' that is greater than bos_price, or None if none found.
     """
     return get_last_swing_point(df, bos_price, 'Swing High', lambda price, bos_price: price > bos_price)
+
 
 def get_last_low_swing_point(df, bos_price):
     """

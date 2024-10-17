@@ -4,6 +4,7 @@ from sweeps import *
 from boses import *
 from constants import *
 
+
 def get_largest_streak(df, result_type):
     """
     Identifies the largest streak of consecutive 'Win' or 'Lose' results.
@@ -28,6 +29,7 @@ def get_largest_streak(df, result_type):
     # Final check for the last streak
     return max(max_streak, current_streak)
 
+
 def get_largest_winstreak(df):
     """
     Identifies the largest winning streak.
@@ -40,6 +42,7 @@ def get_largest_winstreak(df):
     """
     return get_largest_streak(df, 'Win')
 
+
 def get_largest_losestreak(df):
     """
     Identifies the largest losing streak.
@@ -51,6 +54,7 @@ def get_largest_losestreak(df):
         int: The length of the largest consecutive losing streak.
     """
     return get_largest_streak(df, 'Lose')
+
 
 def get_winrate(df, entry_type):
     """
@@ -77,6 +81,7 @@ def get_winrate(df, entry_type):
 
     return round(win_count / count * 100)
 
+
 def get_long_winrate(df):
     """
     Calculates the win rate for 'Long' entries.
@@ -89,6 +94,7 @@ def get_long_winrate(df):
     """
     return get_winrate(df, 'Long')
 
+
 def get_short_winrate(df):
     """
     Calculates the win rate for 'Short' entries.
@@ -100,6 +106,7 @@ def get_short_winrate(df):
         int: The win rate for 'Short' entries as a percentage.
     """
     return get_winrate(df, 'Short')
+
 
 def get_take_profit(entry_price, stop_loss, coefficient):
     """
@@ -115,6 +122,7 @@ def get_take_profit(entry_price, stop_loss, coefficient):
     """
     diff = coefficient * abs(entry_price - stop_loss)
     return entry_price - diff if entry_price < stop_loss else entry_price + diff
+
 
 def get_trade_result(df, entry_type, take_profit, stop_loss):
     """
@@ -140,8 +148,10 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
         return None  # Invalid entry type
 
     # Find the first occurrence of take profit or stop loss
-    take_profit_reached = df[tp_condition].reset_index(drop=True).iloc[0] if not df[tp_condition].empty else None
-    stop_loss_reached = df[sl_condition].reset_index(drop=True).iloc[0] if not df[sl_condition].empty else None
+    take_profit_reached = df[tp_condition].reset_index(
+        drop=True).iloc[0] if not df[tp_condition].empty else None
+    stop_loss_reached = df[sl_condition].reset_index(
+        drop=True).iloc[0] if not df[sl_condition].empty else None
 
     # Determine the trade outcome
     if take_profit_reached is not None and stop_loss_reached is not None:
@@ -153,8 +163,9 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
         return {'Result': 'Win', 'Result Date': take_profit_reached['Open Time']}
     elif stop_loss_reached is not None:
         return {'Result': 'Lose', 'Result Date': stop_loss_reached['Open Time']}
-    
+
     return None
+
 
 def get_stop_loss(data_htf, data_ltf, bos_data, sweep, config):
     """
@@ -177,9 +188,11 @@ def get_stop_loss(data_htf, data_ltf, bos_data, sweep, config):
 
     # Get the last swing point before the BOS date
     return config['swing_func'](
-        data_source[data_source['Open Time'] <= bos_data['Bos Date']].reset_index(drop=True),
+        data_source[data_source['Open Time'] <=
+                    bos_data['Bos Date']].reset_index(drop=True),
         bos_data['Bos Price']
     )
+
 
 def get_entries(htf, ltf, coefficient):
     """
@@ -199,7 +212,8 @@ def get_entries(htf, ltf, coefficient):
 
     # Identify swing points and liquidity sweeps
     swing_points = identify_swing_points(data_htf, FRACTAL)
-    liq_sweeps = identify_liquidity_sweeps(data_htf, swing_points).drop_duplicates(subset=['Sweep Price'], keep='first')
+    liq_sweeps = identify_liquidity_sweeps(data_htf, swing_points).drop_duplicates(
+        subset=['Sweep Price'], keep='first')
 
     # Mapping for sweep types to corresponding BOS and swing point functions
     sweep_config = {
@@ -228,7 +242,8 @@ def get_entries(htf, ltf, coefficient):
             continue
 
         # Get BOS data
-        bos_data = config['bos_func'](data_ltf[data_ltf['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
+        bos_data = config['bos_func'](
+            data_ltf[data_ltf['Open Time'] > sweep['Sweep DateTime']].reset_index(drop=True))
         if bos_data is None:
             continue
 
@@ -242,11 +257,13 @@ def get_entries(htf, ltf, coefficient):
             continue
 
         # Calculate take profit and determine trade result
-        take_profit = get_take_profit(bos_data['Candle Close Price'], stop_loss['Price'], coefficient)
+        take_profit = get_take_profit(
+            bos_data['Candle Close Price'], stop_loss['Price'], coefficient)
         result = get_trade_result(
-            data_ltf[data_ltf['Open Time'] > bos_data['Bos Date']].reset_index(drop=True),
-            config['entry_type'], 
-            take_profit, 
+            data_ltf[data_ltf['Open Time'] >
+                     bos_data['Bos Date']].reset_index(drop=True),
+            config['entry_type'],
+            take_profit,
             stop_loss['Price']
         )
         if result is None:
@@ -268,14 +285,16 @@ def get_entries(htf, ltf, coefficient):
 
     return pd.DataFrame(entries)
 
+
 def trade(htf, ltf, coefficient):
     pd.set_option('display.max_rows', None)
     entries = get_entries(htf, ltf, coefficient)
-    
+
     # Display the entries if available
     if not entries.empty:
         print(entries.to_string(index=False))
-        print('----------------------------------------------------------------------------')
+        print(
+            '----------------------------------------------------------------------------')
 
         # Calculate the profit and count wins
         wins = (entries['Result'] == 'Win').sum()
@@ -305,6 +324,7 @@ def trade(htf, ltf, coefficient):
 
     print('\n\n-------------------------------------------------------------------------------------------------------------------------------------------------------\n\n')
 
+
 def execute_trades_for_combinations(combinations):
     """
     Execute trades based on the provided combinations of timeframes and coefficients.
@@ -315,6 +335,7 @@ def execute_trades_for_combinations(combinations):
     for htf, ltf, coefficient in combinations:
         trade(htf, ltf, coefficient)
 
+
 def get_trade_combinations():
     """
     Generate a list of trade combinations based on different timeframes and coefficients.
@@ -322,6 +343,6 @@ def get_trade_combinations():
     Returns:
     list of tuples: Each tuple contains (htf, ltf, coefficient) for trading.
     """
-    
+
     # Create all combinations of timeframes and coefficients
     return [(htf, ltf, coefficient) for htf, ltf in TIMEFRAMES for coefficient in COEFFICIENTS]
