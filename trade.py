@@ -156,7 +156,7 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
     
     return None
 
-def get_stop_loss(data_htf, data_ltf, bos_data, config):
+def get_stop_loss(data_htf, data_ltf, bos_data, sweep, config):
     """
     Determine the stop loss based on the swing point and BOS data.
 
@@ -169,6 +169,9 @@ def get_stop_loss(data_htf, data_ltf, bos_data, config):
     Returns:
     pd.Series or None: The last swing point that meets the conditions, or None if not found.
     """
+    if STOP_LOSS == StopLoss.SWEEP:
+        return {'Price': sweep['Sweep Price']}
+
     # Choose data source based on the STOP_LOSS setting
     data_source = data_htf if STOP_LOSS == StopLoss.LAST_HTF_FRACTAL else data_ltf
 
@@ -230,11 +233,11 @@ def get_entries(htf, ltf, coefficient):
             continue
 
         # Check BOS price against the sweep price
-        if EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP and not config['bos_price_check'](bos_data['Bos Price'], sweep['Sweep Price']):
+        if (EXCLUDE_IF_BOS_IS_LOWER_OR_HIGHER_THAN_SWEEP or STOP_LOSS == StopLoss.SWEEP) and not config['bos_price_check'](bos_data['Bos Price'], sweep['Sweep Price']):
             continue
 
         # Get the stop loss using the new function
-        stop_loss = get_stop_loss(data_htf, data_ltf, bos_data, config)
+        stop_loss = get_stop_loss(data_htf, data_ltf, bos_data, sweep, config)
         if stop_loss is None:
             continue
 
