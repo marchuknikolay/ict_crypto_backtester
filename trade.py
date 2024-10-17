@@ -167,6 +167,30 @@ def get_trade_result(df, entry_type, take_profit, stop_loss):
     return None
 
 
+def get_reswept_candles(data_htf, sweep, bos_data):
+    """
+    Identify candles that indicate a re-sweep of the sweep price within the BOS time range.
+
+    Parameters:
+    data_htf (pd.DataFrame): High timeframe data.
+    sweep (pd.Series): Sweep data containing type, price, and date information.
+    bos_data (pd.Series): BOS data containing price and date information.
+
+    Returns:
+    pd.DataFrame: A DataFrame of candles indicating a re-sweep, if any.
+    """
+    if sweep['Sweep Type'] == 'Liquidity Sweep High':
+        return data_htf[(data_htf['Open Time'] > sweep['Sweep DateTime']) &
+                        (data_htf['Open Time'] < bos_data['Bos Date']) &
+                        (data_htf['High'] > sweep['Sweep Price'])]
+    elif sweep['Sweep Type'] == 'Liquidity Sweep Low':
+        return data_htf[(data_htf['Open Time'] > sweep['Sweep DateTime']) &
+                        (data_htf['Open Time'] < bos_data['Bos Date']) &
+                        (data_htf['Low'] < sweep['Sweep Price'])]
+
+    return pd.DataFrame()
+
+
 def get_stop_loss(data_htf, data_ltf, bos_data, sweep, config):
     """
     Determine the stop loss based on the swing point and BOS data.
@@ -175,23 +199,39 @@ def get_stop_loss(data_htf, data_ltf, bos_data, sweep, config):
     data_htf (pd.DataFrame): High timeframe data.
     data_ltf (pd.DataFrame): Low timeframe data.
     bos_data (pd.Series): BOS data containing price and date information.
+    sweep (pd.Series): Sweep data containing type, price, and date information.
     config (dict): Configuration for swing point retrieval.
 
     Returns:
-    pd.Series or None: The last swing point that meets the conditions, or None if not found.
+    dict or None: A dictionary with the 'Price' for stop loss or None if conditions aren't met.
     """
+    # Case 1: Stop loss is based on the sweep price
     if STOP_LOSS == StopLoss.SWEEP:
+        # Check if manipulation was re-swept when excluding such cases
+        if EXCLUDE_IF_MANIPULATION_WAS_RESWEPT:
+            # Determine candles that indicate re-sweep within the BOS time range
+            candles = get_reswept_candles(data_htf, sweep, bos_data)
+
+            # If candles indicating a re-sweep are found, stop loss is not valid
+            if not candles.empty:
+                return None
+
+        # Return the sweep price as the stop loss
         return {'Price': sweep['Sweep Price']}
 
-    # Choose data source based on the STOP_LOSS setting
+    # Case 2: Stop loss is based on the last swing point before the BOS date
+    # Select the appropriate data source based on STOP_LOSS setting
     data_source = data_htf if STOP_LOSS == StopLoss.LAST_HTF_FRACTAL else data_ltf
 
-    # Get the last swing point before the BOS date
-    return config['swing_func'](
+    # Retrieve the last swing point using the provided swing function from the config
+    swing_point = config['swing_func'](
         data_source[data_source['Open Time'] <=
                     bos_data['Bos Date']].reset_index(drop=True),
         bos_data['Bos Price']
     )
+
+    # Return the swing point as the stop loss, or None if not found
+    return swing_point
 
 
 def get_entries(htf, ltf, coefficient):
