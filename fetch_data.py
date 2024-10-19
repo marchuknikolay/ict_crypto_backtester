@@ -78,7 +78,7 @@ def fetch_binance_data(symbol, interval, start_date, end_date):
 
     # Convert timestamps to datetime and adjust timezone
     utc_zone = pytz.utc
-    london_zone = pytz.timezone('Europe/London')
+    london_zone = pytz.timezone('Europe/Kyiv')
 
     data['Open Time'] = pd.to_datetime(data['Open Time'], unit='ms').dt.tz_localize(
         utc_zone).dt.tz_convert(london_zone)
